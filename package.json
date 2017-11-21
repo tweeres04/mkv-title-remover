@@ -1,0 +1,13 @@
+{
+  "name": "mkv-title-remover",
+  "version": "1.0.0",
+  "description": "Remove shitty titles from mkvs",
+  "main": "index.js",
+  "repository": "https://github.com/tweeres04/mkv-title-remover",
+  "author": "Tyler Weeres",
+  "license": "MIT",
+  "dependencies": {
+    "ebml": "^2.2.1",
+    "globby": "^7.1.1"
+  }
+}
