@@ -36,13 +36,10 @@ async function go() {
 						const decoder = new ebml.Decoder();
 						const encoder = new ebml.Encoder();
 						const basename = path.basename(p);
+
 						const fileStream = fs.createWriteStream(
 							path.join(outputFolder, basename)
 						);
-						fileStream.on('finish', () => {
-							resolve();
-						});
-						encoder.pipe(fileStream);
 
 						decoder.on('data', chunk => {
 							if (chunk[1].name == 'Title') {
@@ -59,6 +56,13 @@ async function go() {
 						decoder.on('finish', () => {
 							encoder.end();
 						});
+
+						encoder.pipe(fileStream);
+
+						fileStream.on('finish', () => {
+							resolve();
+						});
+
 						fs.readFile(p, (err, data) => {
 							decoder.end(data);
 						});
