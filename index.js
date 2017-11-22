@@ -4,10 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const glob = process.argv[2];
-
-const outputFolder = 'output';
+const outputFolder = process.argv[3] || 'output';
 
 async function go() {
+	console.time('mkv-title-remover');
 	const paths = await globby(glob);
 	const pathsCount = paths.length;
 
@@ -28,52 +28,54 @@ async function go() {
 		}
 	});
 
-	const promises = await paths.map(
-		(p, i) =>
-			new Promise((resolve, reject) => {
-				const decoder = new ebml.Decoder();
-				const encoder = new ebml.Encoder();
-				const basename = path.basename(p);
-				const fileStream = fs.createWriteStream(
-					path.join(outputFolder, basename)
-				);
-				fileStream.on('finish', () => {
-					resolve();
-				});
-				encoder.pipe(fileStream);
+	await paths.reduce(
+		(promise, p, i) =>
+			promise.then(
+				() =>
+					new Promise((resolve, reject) => {
+						const decoder = new ebml.Decoder();
+						const encoder = new ebml.Encoder();
+						const basename = path.basename(p);
+						const fileStream = fs.createWriteStream(
+							path.join(outputFolder, basename)
+						);
+						fileStream.on('finish', () => {
+							resolve();
+						});
+						encoder.pipe(fileStream);
 
-				decoder.on('data', chunk => {
-					if (chunk[1].name == 'Title') {
-						chunk = [
-							'tag',
-							{
-								name: 'Title',
-								data: Buffer.alloc(0)
+						decoder.on('data', chunk => {
+							if (chunk[1].name == 'Title') {
+								chunk = [
+									'tag',
+									{
+										name: 'Title',
+										data: Buffer.alloc(0)
+									}
+								];
 							}
-						];
-					}
-					encoder.write(chunk);
-				});
-				decoder.on('finish', () => {
-					encoder.end();
-				});
-				fs.readFile(p, (err, data) => {
-					decoder.end(data);
-				});
+							encoder.write(chunk);
+						});
+						decoder.on('finish', () => {
+							encoder.end();
+						});
+						fs.readFile(p, (err, data) => {
+							decoder.end(data);
+						});
 
-				console.log(
-					`Stripping title from ${basename} (${i +
-						1} of ${pathsCount})`
-				);
-			})
+						console.log(
+							`Stripping title from ${basename} (${i + 1} of ${
+								pathsCount
+							})`
+						);
+					})
+			),
+		Promise.resolve()
 	);
-
-	await Promise.all(promises).catch(err => {
-		console.error(err);
-	});
 
 	console.log(`Stripped titles from ${paths.length} files`);
 	console.log(`Wrote to ${outputFolder}`);
+	console.timeEnd('mkv-title-remover');
 }
 
 go();
